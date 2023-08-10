@@ -1,5 +1,7 @@
 import requests
 import json
+import base64
+from datetime import datetime
 def vkData():
     print()
     # access token
@@ -7,13 +9,14 @@ def vkData():
     group_id = -221937101     #для пользователя положительное, для группы отрицательное
     count = 5
 
-    # Ссылка на метод API для получения постов со стены пользователя
-    api_url = f"https://api.vk.com/method/wall.get?owner_id={group_id}&count={count}&access_token={access_token}&v=5.131"
+    # Ссылка на метод VK API для получения постов со стены группы
+    vk_api_url = f"https://api.vk.com/method/wall.get?owner_id={group_id}&count={count}&access_token={access_token}&v=5.131"
 
     # Выполняем запрос к API
-    response = requests.get(api_url)
+    response = requests.get(vk_api_url)
     data = response.json()
     wp_dict = {
+        "title":"1",
         "text":"",
         "photos":[]
     }
@@ -35,12 +38,40 @@ def vkData():
             # print(wp_dict) # вывод словарь для json
             json_data = json.dumps(wp_dict)
             # print(json_data) # выводит готовый json
-            wp_dict = {
-                "text": "",
-                "photos": []
-            }
+            SendWp(json_data)
+            wp_dict["text"]=""
+            wp_dict["photos"]=[]
     else:
         print("Ошибка при получении данных.")
+
+def SendWp(json_data):
+    # url сайта на wp
+    wp_url = "http://localhost/wp_test/wp-json/wp/v2"
+    # в wp-config.php define( 'WP_ENVIRONMENT_TYPE', 'local' );
+    # creds юзер + пароль приложения
+    user = "admin"
+    password = "I08Y aqua 6zcT wt84 4r8Q AXtA"
+    # Получаем текущую дату и время
+    current_datetime = datetime.now()
+    # Форматируем дату и время в нужный формат
+    formatted_datetime = current_datetime.strftime('%Y-%m-%dT%H:%M:%S')
+    creds = user + ':' + password
+    token = base64.b64encode(creds.encode())
+    header = {"Authorization":"Basic" + token.decode('utf-8')}
+    post ={
+        'date': formatted_datetime,
+        'title': 'hello api',
+        'content': 'asasaasasasaasaaassaaa',
+        'status': 'publish'
+    }
+
+
+    response = requests.post(wp_url + '/posts', headers=header,json=post)  # отправка в wp
+    if response.status_code == 201:
+        print('Запись успешно создана.')
+    else:
+        print('Произошла ошибка:', response.text)
+
 
 
 
