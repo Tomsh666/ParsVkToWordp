@@ -1,6 +1,7 @@
 import requests
 import os
 import base64
+import json
 from urllib.parse import urlparse
 def vkData():
     print()
@@ -52,10 +53,10 @@ def PicDown(image_url):
         parsed_url = urlparse(image_url)
         image_filename = os.path.basename(parsed_url.path)
         image_path = os.path.join(save_directory, image_filename)
-
         with open(image_path, "wb") as f:
             f.write(response.content)
-        return image_filename
+
+        return image_filename, save_directory
     else:
         print("Ошибка при скачивании изображения.")
 
@@ -71,14 +72,23 @@ def SendWp(data):
     creds = user + ':' + password
     token = base64.b64encode(creds.encode())
     header = {"Authorization": "Basic " + token.decode('utf-8')}
+    # текс в wp
     post = {
         'content': '<!-- wp:paragraph -->' + data["text"] + '<!-- /wp:paragraph -->',
         'status': 'publish'
     }
 
+    # скачивание картинки по url и создание записи в wp
     for pic in data["photos"]:
-        #post['content']+='<!-- wp:image --><figure class="wp-block-imag"><img src="' + pic + '" alt="picture"></figure><!-- /wp:image -->'
-        file_name = PicDown(pic)
+        file_name, direct = PicDown(pic)
+        media={
+            'file': open(direct+'\\'+file_name,'rb')
+        }
+        image = requests.post(wp_url + 'media', headers=header, files=media)
+        imageURL = str(json.loads(image.content)['source_url'])
+        post['content']+='<!-- wp:image --><figure class="wp-block-image"><img src="' + imageURL + '" alt="picture"></figure><!-- /wp:image -->'
+
+
 
     response = requests.post(wp_url + 'posts', headers=header,json=post)  # отправка в wp
     if response.status_code == 201:
