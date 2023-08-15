@@ -8,7 +8,7 @@ def vkData():
     # access token vk
     access_token = "fd218039fd218039fd2180391dfe34becdffd21fd21803999f0bb0cea30602a831c43c0"
     group_id = -221937101     #для пользователя положительное, для группы отрицательное
-    count = 1
+    count = 5
 
     # Ссылка на метод VK API для получения постов со стены группы
     vk_api_url = f"https://api.vk.com/method/wall.get?owner_id={group_id}&count={count}&access_token={access_token}&v=5.131"
@@ -17,7 +17,6 @@ def vkData():
     response = requests.get(vk_api_url)
     data = response.json()
     wp_dict = {
-        "title":"1",
         "text":"",
         "photos":[]
     }
@@ -25,7 +24,7 @@ def vkData():
     # Обработка данных
     if "response" in data and "items" in data["response"]:
         wall_posts = data["response"]["items"]
-        for post in wall_posts:
+        for post in reversed(wall_posts):
             # print(post["text"]) # текст поста
             wp_dict["text"]=post["text"]
             if "attachments" in post:
@@ -36,8 +35,7 @@ def vkData():
                         photo_url = largest_photo["url"]
                         # print("Фотография:", photo_url) # url фотографии
                         wp_dict["photos"].append(photo_url)
-            # print(wp_dict) # вывод словарь для json
-            # print(json_data) # выводит готовый json
+            # print(wp_dict) # вывод словарь содержимого постов
             SendWp(wp_dict)
             wp_dict["text"]=""
             wp_dict["photos"]=[]
@@ -46,7 +44,7 @@ def vkData():
 
 #загрузка изображений в папку(не факт что нужно)
 def PicDown(image_url):
-    save_directory = "D:\MAMP\htdocs\wp_test\wp-content\images"  # дириктория где храняться картинки
+    save_directory = "D:\MAMP\htdocs\wp_test\wp-content"  # дириктория где храняться картинки
     response = requests.get(image_url)
 
     if response.status_code == 200:
@@ -81,12 +79,22 @@ def SendWp(data):
     # скачивание картинки по url и создание записи в wp
     for pic in data["photos"]:
         file_name, direct = PicDown(pic)
+        file = open(direct+'\\'+file_name,'rb')
         media={
-            'file': open(direct+'\\'+file_name,'rb')
+            'file': file
         }
         image = requests.post(wp_url + 'media', headers=header, files=media)
         imageURL = str(json.loads(image.content)['source_url'])
         post['content']+='<!-- wp:image --><figure class="wp-block-image"><img src="' + imageURL + '" alt="picture"></figure><!-- /wp:image -->'
+        file.close()
+
+        #удаление временного файла
+        file_path = direct + '\\' + file_name  # Замените на путь к вашему файлу
+        try:
+            os.remove(file_path)
+            print("Файл успешно удален.")
+        except OSError as e:
+            print("Ошибка при удалении файла:", e)
 
 
 
